@@ -35,6 +35,8 @@ const selectors = {
   searchInput: document.getElementById("searchInput"),
   searchBtn: document.getElementById("searchBtn"),
   clearSearch: document.getElementById("clearSearch"),
+  shareBtn: document.getElementById("shareBtn"),
+  shareStatus: document.getElementById("shareStatus"),
 };
 
 const rowMap = {
@@ -327,6 +329,27 @@ document.addEventListener("DOMContentLoaded", () => {
     if (selectors.searchInput) {
       selectors.searchInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") selectors.searchBtn.click();
+      });
+    }
+
+    if (selectors.shareBtn) {
+      selectors.shareBtn.addEventListener("click", async () => {
+        const url = window.location.href;
+        try {
+          await navigator.clipboard.writeText(url);
+          if (selectors.shareStatus) selectors.shareStatus.textContent = "Link copied to clipboard!";
+        } catch (err) {
+          const fallbackInput = document.createElement("input");
+          fallbackInput.value = url;
+          document.body.appendChild(fallbackInput);
+          fallbackInput.select();
+          document.execCommand("copy");
+          document.body.removeChild(fallbackInput);
+          if (selectors.shareStatus) selectors.shareStatus.textContent = "Link copied to clipboard!";
+        }
+        setTimeout(() => {
+          if (selectors.shareStatus) selectors.shareStatus.textContent = "";
+        }, 2500);
       });
     }
   });
