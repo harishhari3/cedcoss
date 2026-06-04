@@ -1,14 +1,14 @@
 :root {
   color-scheme: light;
-  --bg: #f7f8fb;
+  --bg: #f3f0ff;
   --panel: #ffffff;
-  --text: #111827;
-  --muted: #6b7280;
-  --accent: #2563eb;
-  --accent-soft: #e0efff;
-  --success: #d1fae5;
-  --success-border: #10b981;
-  --shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+  --text: #0f172a;
+  --muted: #475569;
+  --accent: #7c3aed;
+  --accent-soft: #f3e8ff;
+  --success: #ecfdf5;
+  --success-border: #059669;
+  --shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
 }
 
 * {
@@ -76,6 +76,12 @@ body {
   color: var(--muted);
 }
 
+.dataset-note {
+  margin-top: 16px;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
 select {
   width: 100%;
   min-height: 48px;
@@ -85,6 +91,42 @@ select {
   font-size: 1rem;
   background: #fff;
   color: var(--text);
+}
+
+.search-group label {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.search-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+input#searchInput {
+  flex: 1 1 auto;
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid #e6e1f6;
+}
+
+.btn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
++}
+
+.btn.primary {
+  background: var(--accent);
+  color: white;
+  border-color: rgba(0,0,0,0.05);
 }
 
 .comparison-panel {

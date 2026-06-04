@@ -15,6 +15,15 @@
         <p>Select two laptops to compare price, brand, specs, rating and value side by side.</p>
       </div>
       <div class="hero-actions">
+        <div class="search-group">
+          <label for="searchInput">Search Laptops</label>
+          <div class="search-controls">
+            <input id="searchInput" placeholder="Search by brand, model, processor, GPU..." />
+            <button id="searchBtn" class="btn primary">Search</button>
+            <button id="clearSearch" class="btn">Clear</button>
+          </div>
+        </div>
+
         <div class="select-group">
           <label for="productA">Product A</label>
           <select id="productA"></select>
@@ -24,6 +33,7 @@
           <select id="productB"></select>
         </div>
       </div>
+      <p id="productCount" class="dataset-note">Loading products from dataset...</p>
     </header>
 
     <section class="comparison-panel">

@@ -31,6 +31,10 @@ const defaultProducts = [
 const selectors = {
   productA: document.getElementById("productA"),
   productB: document.getElementById("productB"),
+  productCount: document.getElementById("productCount"),
+  searchInput: document.getElementById("searchInput"),
+  searchBtn: document.getElementById("searchBtn"),
+  clearSearch: document.getElementById("clearSearch"),
 };
 
 const rowMap = {
@@ -51,7 +55,7 @@ function formatCurrency(value) {
 }
 
 function parseNumber(value) {
-  const raw = value.match(/[\d\.]+/g);
+  const raw = String(value).match(/[\d\.]+/g);
   return raw ? parseFloat(raw.join("")) : 0;
 }
 
@@ -69,11 +73,11 @@ function scoreProcessor(proc) {
 
 function scoreStorage(storage) {
   const size = parseNumber(storage);
-  return storage.toLowerCase().includes("ssd") ? size * 1.2 : size;
+  return String(storage || "").toLowerCase().includes("ssd") ? size * 1.2 : size;
 }
 
 function scoreGpu(gpu) {
-  const lower = gpu.toLowerCase();
+  const lower = String(gpu || "").toLowerCase();
   if (lower.includes("rtx") || lower.includes("gtx")) return 90;
   if (lower.includes("iris") || lower.includes("radeon") || lower.includes("uhd")) return 65;
   if (lower.includes("apple") || lower.includes("m1")) return 85;
@@ -85,7 +89,7 @@ function scoreBattery(battery) {
 }
 
 function getValueScore(product) {
-  const priceScore = 100 - Math.min(100, (product.price / 2000));
+  const priceScore = 100 - Math.min(100, product.price / 2000);
   const ramScore = parseNumber(product.ram) * 5;
   const processorScore = scoreProcessor(product.processor);
   const storageScore = scoreStorage(product.storage) / 10;
@@ -95,8 +99,105 @@ function getValueScore(product) {
   return Math.round(total / 6);
 }
 
-function loadProductOptions() {
-  products.forEach((product) => {
+function standardizeText(value) {
+  return (value || "").trim();
+}
+
+function parseCsvLine(line) {
+  const values = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      values.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  values.push(current);
+  return values.map((cell) => cell.trim());
+}
+
+function getDerivedRating(product) {
+  const base = 2.8;
+  const priceFactor = Math.min(1.2, product.price / 100000);
+  const processorFactor = scoreProcessor(product.processor) / 100;
+  const gpuFactor = scoreGpu(product.gpu) / 100;
+  const batteryFactor = Math.min(0.8, parseNumber(product.battery) / 20);
+  return Number(
+    Math.min(5, Math.max(3, base + priceFactor + processorFactor * 0.8 + gpuFactor * 0.6 + batteryFactor * 0.4)).toFixed(1),
+  );
+}
+
+function parseProductsFromCsv(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (!lines.length) return [];
+  const headers = parseCsvLine(lines[0] || "");
+  return lines
+    .slice(1)
+    .map((line, index) => {
+      const cells = parseCsvLine(line);
+      const row = headers.reduce((acc, header, idx) => ({ ...acc, [header]: cells[idx] || "" }), {});
+
+      const brand = standardizeText(row.Brand);
+      const name = standardizeText(row.Name);
+      const price = parseInt(row.Price, 10) || 0;
+      const processor = standardizeText(row.Processor_Name || row.Processor_Brand || "");
+      const ram = standardizeText(row.RAM || row.RAM_Expandable || "");
+      const storage = standardizeText(row.SSD || row.HDD || "");
+      const gpu = standardizeText(row.GPU || "Integrated");
+      const battery = standardizeText(row.Battery_Life || "");
+      const display = standardizeText(row.Display || row.Display_type || "");
+
+      if (!brand || !name || price <= 0) return null;
+
+      return {
+        id: index + 1,
+        brand,
+        name,
+        price,
+        rating: getDerivedRating({ price, processor, gpu, battery }),
+        processor,
+        ram,
+        storage,
+        gpu,
+        battery,
+        display,
+      };
+    })
+    .filter(Boolean);
+}
+
+function loadProductsFromCsv() {
+  return fetch("laptop.csv")
+    .then((response) => {
+      if (!response.ok) throw new Error("Could not load dataset");
+      return response.text();
+    })
+    .then((text) => {
+      const csvProducts = parseProductsFromCsv(text);
+      products = csvProducts.length ? csvProducts : defaultProducts;
+    })
+    .catch(() => {
+      products = defaultProducts;
+    });
+}
+
+function loadProductOptions(filtered) {
+  const list = filtered && filtered.length ? filtered : products;
+  selectors.productA.innerHTML = "";
+  selectors.productB.innerHTML = "";
+
+  list.forEach((product) => {
     const optionA = document.createElement("option");
     const optionB = document.createElement("option");
     optionA.value = product.id;
@@ -106,8 +207,27 @@ function loadProductOptions() {
     selectors.productA.appendChild(optionA);
     selectors.productB.appendChild(optionB);
   });
-  selectors.productA.selectedIndex = 0;
-  selectors.productB.selectedIndex = 1;
+
+  if (selectors.productCount) selectors.productCount.textContent = `${list.length} laptops available`;
+  if (list.length >= 2) {
+    selectors.productA.selectedIndex = 0;
+    selectors.productB.selectedIndex = 1;
+  } else if (list.length === 1) {
+    selectors.productA.selectedIndex = 0;
+  }
+}
+
+function filterProducts(query) {
+  if (!query) return products;
+  const q = query.toLowerCase();
+  return products.filter((p) => {
+    return (
+      (p.brand && p.brand.toLowerCase().includes(q)) ||
+      (p.name && p.name.toLowerCase().includes(q)) ||
+      (p.processor && p.processor.toLowerCase().includes(q)) ||
+      (p.gpu && p.gpu.toLowerCase().includes(q))
+    );
+  });
 }
 
 function getProductById(id) {
@@ -136,76 +256,6 @@ function compareField(valueA, valueB, key) {
   if (key === "battery") return parseNumber(valueA) > parseNumber(valueB) ? 0 : parseNumber(valueA) < parseNumber(valueB) ? 1 : -1;
   if (key === "value") return valueA > valueB ? 0 : valueA < valueB ? 1 : -1;
   return -1;
-}
-
-function standardizeText(value) {
-  return (value || "").trim();
-}
-
-function parseCsvLine(line) {
-  return line.match(/(?:"([^"]*)")|([^,]+)/g)?.map((cell) => cell.replace(/^"|"$/g, "").trim()) || [];
-}
-
-function getDerivedRating(product) {
-  const base = 2.8;
-  const priceFactor = Math.min(1.2, product.price / 100000);
-  const processorFactor = scoreProcessor(product.processor) / 100;
-  const gpuFactor = scoreGpu(product.gpu) / 100;
-  const batteryFactor = Math.min(0.8, parseNumber(product.battery) / 20);
-  return Math.min(5, Math.max(3, base + priceFactor + processorFactor * 0.8 + gpuFactor * 0.6 + batteryFactor * 0.4));
-}
-
-function parseProductsFromCsv(text) {
-  const lines = text.trim().split(/\r?\n/);
-  const headers = parseCsvLine(lines[0] || "").map((value) => value.trim());
-  return lines.slice(1).map((line, index) => {
-    const cells = parseCsvLine(line);
-    const row = headers.reduce((acc, header, idx) => ({
-      ...acc,
-      [header]: cells[idx] ? cells[idx].trim() : "",
-    }), {});
-
-    const brand = standardizeText(row.Brand);
-    const name = standardizeText(row.Name);
-    const price = parseInt(row.Price, 10) || 0;
-    const processor = standardizeText(row.Processor_Name || row.Processor_Brand || row.Processor_Brand);
-    const ram = standardizeText(row.RAM || row.RAM_Expandable || "");
-    const storage = standardizeText(row.SSD || row.HDD || "");
-    const gpu = standardizeText(row.GPU || "Integrated");
-    const battery = standardizeText(row.Battery_Life || "");
-    const display = standardizeText(row.Display || row.Display_type || "");
-
-    return {
-      id: index + 1,
-      brand,
-      name,
-      price,
-      rating: Number(getDerivedRating({ price, processor, gpu, battery }).toFixed(1)),
-      processor,
-      ram,
-      storage,
-      gpu,
-      battery,
-      display,
-    };
-  }).filter((product) => product.brand && product.name && product.price > 0);
-}
-
-function loadProductsFromCsv() {
-  return fetch("laptop.csv")
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error("Could not load dataset");
-      }
-      return response.text();
-    })
-    .then((text) => {
-      const csvProducts = parseProductsFromCsv(text);
-      products = csvProducts.length ? csvProducts : defaultProducts;
-    })
-    .catch(() => {
-      products = defaultProducts;
-    });
 }
 
 function updateComparison() {
@@ -248,9 +298,36 @@ function updateComparison() {
 
 document.addEventListener("DOMContentLoaded", () => {
   loadProductsFromCsv().then(() => {
+    if (!products.length) {
+      products = defaultProducts;
+      if (selectors.productCount) selectors.productCount.textContent = "Failed to load laptop.csv, using fallback product list.";
+    }
     loadProductOptions();
     updateComparison();
     selectors.productA.addEventListener("change", updateComparison);
     selectors.productB.addEventListener("change", updateComparison);
+
+    if (selectors.searchBtn) {
+      selectors.searchBtn.addEventListener("click", () => {
+        const q = selectors.searchInput.value.trim();
+        const matches = filterProducts(q);
+        loadProductOptions(matches);
+        updateComparison();
+      });
+    }
+
+    if (selectors.clearSearch) {
+      selectors.clearSearch.addEventListener("click", () => {
+        selectors.searchInput.value = "";
+        loadProductOptions();
+        updateComparison();
+      });
+    }
+
+    if (selectors.searchInput) {
+      selectors.searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") selectors.searchBtn.click();
+      });
+    }
   });
 });
