@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TechPick Laptop Comparison</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="page-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">TechPick</p>
+        <h1>Laptop Comparison</h1>
+        <p>Select two laptops to compare price, brand, specs, rating and value side by side.</p>
+      </div>
+      <div class="hero-actions">
+        <div class="select-group">
+          <label for="productA">Product A</label>
+          <select id="productA"></select>
+        </div>
+        <div class="select-group">
+          <label for="productB">Product B</label>
+          <select id="productB"></select>
+        </div>
+      </div>
+    </header>
+
+    <section class="comparison-panel">
+      <div class="summary-card">
+        <h2>Smart comparison</h2>
+        <p>Choose two laptops and see which one delivers better value for price, performance, battery, and storage.</p>
+      </div>
+
+      <div class="compare-table-wrapper">
+        <table id="comparisonTable">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>Product A</th>
+              <th>Product B</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-key="brand"><th>Brand</th><td id="brandA"></td><td id="brandB"></td></tr>
+            <tr data-key="name"><th>Model</th><td id="nameA"></td><td id="nameB"></td></tr>
+            <tr data-key="price"><th>Price</th><td id="priceA"></td><td id="priceB"></td></tr>
+            <tr data-key="rating"><th>Rating</th><td id="ratingA"></td><td id="ratingB"></td></tr>
+            <tr data-key="processor"><th>Processor</th><td id="processorA"></td><td id="processorB"></td></tr>
+            <tr data-key="ram"><th>RAM</th><td id="ramA"></td><td id="ramB"></td></tr>
+            <tr data-key="storage"><th>Storage</th><td id="storageA"></td><td id="storageB"></td></tr>
+            <tr data-key="gpu"><th>Graphics</th><td id="gpuA"></td><td id="gpuB"></td></tr>
+            <tr data-key="battery"><th>Battery</th><td id="batteryA"></td><td id="batteryB"></td></tr>
+            <tr data-key="value"><th>Value</th><td id="valueA"></td><td id="valueB"></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
