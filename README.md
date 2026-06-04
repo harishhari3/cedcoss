@@ -12,7 +12,8 @@ A static frontend demo for comparing two laptops side by side.
 
 1. Open `index.html` in a browser.
 2. Choose two products from the dropdown selectors.
-3. The table updates automatically and highlights better values.
+3. Use the search box to filter available laptops by brand, model, processor, or GPU.
+4. The table updates automatically and highlights better values.
 
 > Note: the page attempts to load product data from `laptop.csv`. If opening from `file://` does not work, use a local server such as `python -m http.server` or `npx serve`.
 
