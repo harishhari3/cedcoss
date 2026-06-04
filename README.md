@@ -14,6 +14,8 @@ A static frontend demo for comparing two laptops side by side.
 2. Choose two products from the dropdown selectors.
 3. The table updates automatically and highlights better values.
 
+> Note: the page attempts to load product data from `laptop.csv`. If opening from `file://` does not work, use a local server such as `python -m http.server` or `npx serve`.
+
 ## Files
 
 - `index.html` — page structure

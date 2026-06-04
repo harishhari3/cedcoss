@@ -1,4 +1,5 @@
-const products = [
+let products = [];
+const defaultProducts = [
   {
     id: 1,
     brand: "HP",
@@ -24,84 +25,6 @@ const products = [
     gpu: "GeForce RTX 3050",
     battery: "Upto 10 Hrs",
     display: "15.6 inch",
-  },
-  {
-    id: 3,
-    brand: "Lenovo",
-    name: "Lenovo Ideapad Slim 3",
-    price: 36289,
-    rating: 4.0,
-    processor: "AMD Hexa-Core Ryzen 5",
-    ram: "8 GB",
-    storage: "512 GB SSD",
-    gpu: "Radeon",
-    battery: "Upto 11 Hrs",
-    display: "15.6 inch",
-  },
-  {
-    id: 4,
-    brand: "Acer",
-    name: "Acer One 14 Z8-415",
-    price: 39990,
-    rating: 4.1,
-    processor: "Intel Core i5 (11th Gen)",
-    ram: "8 GB",
-    storage: "512 GB SSD",
-    gpu: "Iris Xe",
-    battery: "Upto 8 Hrs",
-    display: "14 inch",
-  },
-  {
-    id: 5,
-    brand: "ASUS",
-    name: "ASUS VivoBook 14 X415EA",
-    price: 36990,
-    rating: 4.2,
-    processor: "Intel Core i3 (11th Gen)",
-    ram: "8 GB",
-    storage: "512 GB SSD",
-    gpu: "UHD",
-    battery: "Upto 6 Hrs",
-    display: "14 inch",
-  },
-  {
-    id: 6,
-    brand: "Apple",
-    name: "MacBook Air M1",
-    price: 90900,
-    rating: 4.8,
-    processor: "Apple M1",
-    ram: "8 GB",
-    storage: "256 GB SSD",
-    gpu: "Apple M1",
-    battery: "Upto 15 Hrs",
-    display: "13.3 inch",
-  },
-  {
-    id: 7,
-    brand: "HP",
-    name: "HP Pavilion 14-dv2153TU",
-    price: 69999,
-    rating: 4.4,
-    processor: "Intel Core i5 (12th Gen)",
-    ram: "16 GB",
-    storage: "1 TB SSD",
-    gpu: "Iris Xe",
-    battery: "Upto 10 Hrs",
-    display: "14 inch",
-  },
-  {
-    id: 8,
-    brand: "Acer",
-    name: "Acer Predator Helios Neo 16",
-    price: 104990,
-    rating: 4.6,
-    processor: "Intel Core i7 (13th Gen)",
-    ram: "16 GB",
-    storage: "1 TB SSD",
-    gpu: "GeForce RTX 4050",
-    battery: "Upto 8 Hrs",
-    display: "16 inch",
   },
 ];
 
@@ -215,6 +138,76 @@ function compareField(valueA, valueB, key) {
   return -1;
 }
 
+function standardizeText(value) {
+  return (value || "").trim();
+}
+
+function parseCsvLine(line) {
+  return line.match(/(?:"([^"]*)")|([^,]+)/g)?.map((cell) => cell.replace(/^"|"$/g, "").trim()) || [];
+}
+
+function getDerivedRating(product) {
+  const base = 2.8;
+  const priceFactor = Math.min(1.2, product.price / 100000);
+  const processorFactor = scoreProcessor(product.processor) / 100;
+  const gpuFactor = scoreGpu(product.gpu) / 100;
+  const batteryFactor = Math.min(0.8, parseNumber(product.battery) / 20);
+  return Math.min(5, Math.max(3, base + priceFactor + processorFactor * 0.8 + gpuFactor * 0.6 + batteryFactor * 0.4));
+}
+
+function parseProductsFromCsv(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const headers = parseCsvLine(lines[0] || "").map((value) => value.trim());
+  return lines.slice(1).map((line, index) => {
+    const cells = parseCsvLine(line);
+    const row = headers.reduce((acc, header, idx) => ({
+      ...acc,
+      [header]: cells[idx] ? cells[idx].trim() : "",
+    }), {});
+
+    const brand = standardizeText(row.Brand);
+    const name = standardizeText(row.Name);
+    const price = parseInt(row.Price, 10) || 0;
+    const processor = standardizeText(row.Processor_Name || row.Processor_Brand || row.Processor_Brand);
+    const ram = standardizeText(row.RAM || row.RAM_Expandable || "");
+    const storage = standardizeText(row.SSD || row.HDD || "");
+    const gpu = standardizeText(row.GPU || "Integrated");
+    const battery = standardizeText(row.Battery_Life || "");
+    const display = standardizeText(row.Display || row.Display_type || "");
+
+    return {
+      id: index + 1,
+      brand,
+      name,
+      price,
+      rating: Number(getDerivedRating({ price, processor, gpu, battery }).toFixed(1)),
+      processor,
+      ram,
+      storage,
+      gpu,
+      battery,
+      display,
+    };
+  }).filter((product) => product.brand && product.name && product.price > 0);
+}
+
+function loadProductsFromCsv() {
+  return fetch("laptop.csv")
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Could not load dataset");
+      }
+      return response.text();
+    })
+    .then((text) => {
+      const csvProducts = parseProductsFromCsv(text);
+      products = csvProducts.length ? csvProducts : defaultProducts;
+    })
+    .catch(() => {
+      products = defaultProducts;
+    });
+}
+
 function updateComparison() {
   clearHighlights();
   const productA = getProductById(selectors.productA.value);
@@ -254,8 +247,10 @@ function updateComparison() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  loadProductOptions();
-  updateComparison();
-  selectors.productA.addEventListener("change", updateComparison);
-  selectors.productB.addEventListener("change", updateComparison);
+  loadProductsFromCsv().then(() => {
+    loadProductOptions();
+    updateComparison();
+    selectors.productA.addEventListener("change", updateComparison);
+    selectors.productB.addEventListener("change", updateComparison);
+  });
 });
