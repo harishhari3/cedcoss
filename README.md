@@ -17,6 +17,12 @@ A static frontend demo for comparing two laptops side by side.
 
 > Note: the page attempts to load product data from `laptop.csv`. If opening from `file://` does not work, use a local server such as `python -m http.server` or `npx serve`.
 
+## Live Demo
+
+View the deployed site on Vercel:
+
+- https://cedcoss.vercel.app/?a=1&b=2
+
 ## Files
 
 - `index.html` — page structure
