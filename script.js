@@ -37,6 +37,18 @@ const selectors = {
   clearSearch: document.getElementById("clearSearch"),
   shareBtn: document.getElementById("shareBtn"),
   shareStatus: document.getElementById("shareStatus"),
+  recommendationText: document.getElementById("recommendationText"),
+  recommendationCopy: document.getElementById("recommendationCopy"),
+  cardAName: document.getElementById("cardAName"),
+  cardABrand: document.getElementById("cardABrand"),
+  cardAPrice: document.getElementById("cardAPrice"),
+  cardARating: document.getElementById("cardARating"),
+  cardAValue: document.getElementById("cardAValue"),
+  cardBName: document.getElementById("cardBName"),
+  cardBBrand: document.getElementById("cardBBrand"),
+  cardBPrice: document.getElementById("cardBPrice"),
+  cardBRating: document.getElementById("cardBRating"),
+  cardBValue: document.getElementById("cardBValue"),
 };
 
 const rowMap = {
@@ -49,8 +61,11 @@ const rowMap = {
   storage: ["storageA", "storageB"],
   gpu: ["gpuA", "gpuB"],
   battery: ["batteryA", "batteryB"],
+  display: ["displayA", "displayB"],
   value: ["valueA", "valueB"],
 };
+
+const initialState = getQueryState();
 
 function formatCurrency(value) {
   return `₹${value.toLocaleString()}`;
@@ -99,6 +114,50 @@ function getValueScore(product) {
   const batteryScore = scoreBattery(product.battery) / 10;
   const total = priceScore + ramScore + processorScore + storageScore + gpuScore + batteryScore;
   return Math.round(total / 6);
+}
+
+function formatStat(label, value) {
+  return `${label}: ${value}`;
+}
+
+function updateProductCard(card, product) {
+  if (!card || !product) return;
+  card.textContent = `${product.brand} · ${product.name}`;
+}
+
+function updateCardDetails(cardSelectors, product) {
+  if (!product) {
+    cardSelectors.cardName.textContent = "No selection";
+    cardSelectors.cardBrand.textContent = "Choose a different laptop to view details.";
+    cardSelectors.cardPrice.textContent = "";
+    cardSelectors.cardRating.textContent = "";
+    cardSelectors.cardValue.textContent = "";
+    return;
+  }
+
+  cardSelectors.cardName.textContent = product.name;
+  cardSelectors.cardBrand.textContent = `${product.brand} • ${product.display || "Unknown display"}`;
+  cardSelectors.cardPrice.textContent = formatStat("Price", formatCurrency(product.price));
+  cardSelectors.cardRating.textContent = formatStat("Rating", product.rating.toFixed(1));
+  cardSelectors.cardValue.textContent = formatStat("Value", getValueScore(product));
+}
+
+function getQueryState() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    productA: parseInt(params.get("a"), 10) || null,
+    productB: parseInt(params.get("b"), 10) || null,
+    search: params.get("q") || "",
+  };
+}
+
+function updateUrlState(query) {
+  const params = new URLSearchParams();
+  if (selectors.productA.value) params.set("a", selectors.productA.value);
+  if (selectors.productB.value) params.set("b", selectors.productB.value);
+  if (query) params.set("q", query);
+  const newUrl = `${window.location.pathname}?${params.toString()}`;
+  window.history.replaceState(null, "", newUrl);
 }
 
 function standardizeText(value) {
@@ -199,6 +258,17 @@ function loadProductOptions(filtered) {
   selectors.productA.innerHTML = "";
   selectors.productB.innerHTML = "";
 
+  if (!list.length) {
+    const placeholder = document.createElement("option");
+    placeholder.textContent = "No matching laptops";
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    selectors.productA.appendChild(placeholder.cloneNode(true));
+    selectors.productB.appendChild(placeholder);
+    if (selectors.productCount) selectors.productCount.textContent = "No laptops match your search.";
+    return;
+  }
+
   list.forEach((product) => {
     const optionA = document.createElement("option");
     const optionB = document.createElement("option");
@@ -211,9 +281,18 @@ function loadProductOptions(filtered) {
   });
 
   if (selectors.productCount) selectors.productCount.textContent = `${list.length} laptops available`;
+
   if (list.length >= 2) {
-    selectors.productA.selectedIndex = 0;
-    selectors.productB.selectedIndex = 1;
+    const selectedA = list.find((product) => product.id === initialState.productA);
+    const selectedB = list.find((product) => product.id === initialState.productB && product.id !== initialState.productA);
+
+    if (selectedA) selectors.productA.value = selectedA.id;
+    if (selectedB) selectors.productB.value = selectedB.id;
+
+    if (!selectors.productA.value || selectors.productA.value === selectors.productB.value) {
+      selectors.productA.selectedIndex = 0;
+      selectors.productB.selectedIndex = 1;
+    }
   } else if (list.length === 1) {
     selectors.productA.selectedIndex = 0;
   }
@@ -270,6 +349,25 @@ function updateComparison() {
       cell.textContent = "—";
       cell.classList.remove("highlight");
     });
+
+    updateCardDetails({
+      cardName: selectors.cardAName,
+      cardBrand: selectors.cardABrand,
+      cardPrice: selectors.cardAPrice,
+      cardRating: selectors.cardARating,
+      cardValue: selectors.cardAValue,
+    }, null);
+    updateCardDetails({
+      cardName: selectors.cardBName,
+      cardBrand: selectors.cardBBrand,
+      cardPrice: selectors.cardBPrice,
+      cardRating: selectors.cardBRating,
+      cardValue: selectors.cardBValue,
+    }, null);
+
+    if (selectors.recommendationText) selectors.recommendationText.textContent = "Choose two different laptops to compare.";
+    if (selectors.recommendationCopy)
+      selectors.recommendationCopy.textContent = "Select another model to see strengths for each option.";
     return;
   }
 
@@ -283,8 +381,12 @@ function updateComparison() {
     storage: [productA.storage, productB.storage],
     gpu: [productA.gpu, productB.gpu],
     battery: [productA.battery, productB.battery],
+    display: [productA.display || "Unknown", productB.display || "Unknown"],
     value: [getValueScore(productA), getValueScore(productB)],
   };
+
+  const scoreKeys = ["price", "rating", "ram", "storage", "gpu", "battery", "value"];
+  const tallies = { A: 0, B: 0 };
 
   Object.entries(comparison).forEach(([key, [valueA, valueB]]) => {
     const result = compareField(
@@ -295,7 +397,42 @@ function updateComparison() {
 
     setCellValue(rowMap[key][0], valueA, result === 0);
     setCellValue(rowMap[key][1], valueB, result === 1);
+
+    if (scoreKeys.includes(key)) {
+      if (result === 0) tallies.A += 1;
+      if (result === 1) tallies.B += 1;
+    }
   });
+
+  updateCardDetails({
+    cardName: selectors.cardAName,
+    cardBrand: selectors.cardABrand,
+    cardPrice: selectors.cardAPrice,
+    cardRating: selectors.cardARating,
+    cardValue: selectors.cardAValue,
+  }, productA);
+  updateCardDetails({
+    cardName: selectors.cardBName,
+    cardBrand: selectors.cardBBrand,
+    cardPrice: selectors.cardBPrice,
+    cardRating: selectors.cardBRating,
+    cardValue: selectors.cardBValue,
+  }, productB);
+
+  let recommendation = "This is a strong matchup. Use the values above to choose the best fit.";
+  if (tallies.A > tallies.B) {
+    recommendation = `Product A looks stronger with ${tallies.A} category wins.`;
+  } else if (tallies.B > tallies.A) {
+    recommendation = `Product B leads with ${tallies.B} category wins.`;
+  } else {
+    recommendation = "Both laptops are evenly matched across key categories.";
+  }
+
+  if (selectors.recommendationText) selectors.recommendationText.textContent = recommendation;
+  if (selectors.recommendationCopy)
+    selectors.recommendationCopy.textContent = `Product A value: ${comparison.value[0]} • Product B value: ${comparison.value[1]}.`;
+
+  updateUrlState(selectors.searchInput.value.trim());
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -304,7 +441,13 @@ document.addEventListener("DOMContentLoaded", () => {
       products = defaultProducts;
       if (selectors.productCount) selectors.productCount.textContent = "Failed to load laptop.csv, using fallback product list.";
     }
-    loadProductOptions();
+
+    if (initialState.search) {
+      selectors.searchInput.value = initialState.search;
+    }
+
+    const startingProducts = initialState.search ? filterProducts(initialState.search) : products;
+    loadProductOptions(startingProducts);
     updateComparison();
     selectors.productA.addEventListener("change", updateComparison);
     selectors.productB.addEventListener("change", updateComparison);

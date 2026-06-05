@@ -92,10 +92,43 @@
             <tr data-key="storage"><th>Storage</th><td id="storageA"></td><td id="storageB"></td></tr>
             <tr data-key="gpu"><th>Graphics</th><td id="gpuA"></td><td id="gpuB"></td></tr>
             <tr data-key="battery"><th>Battery</th><td id="batteryA"></td><td id="batteryB"></td></tr>
+            <tr data-key="display"><th>Display</th><td id="displayA"></td><td id="displayB"></td></tr>
             <tr data-key="value"><th>Value</th><td id="valueA"></td><td id="valueB"></td></tr>
           </tbody>
         </table>
       </div>
+
+      <section class="results-panel">
+        <div class="compare-summary">
+          <p class="eyebrow">Insight</p>
+          <h2 id="recommendationText">Select two different laptops to see the best option.</h2>
+          <p id="recommendationCopy" class="muted-copy">This comparison highlights the stronger laptop based on price, rating, storage, battery, GPU, and value.</p>
+        </div>
+
+        <div class="selected-cards">
+          <article class="product-card" id="cardA">
+            <span class="card-label">Product A</span>
+            <h3 id="cardAName">No selection</h3>
+            <p id="cardABrand" class="muted-copy"></p>
+            <div class="card-stats">
+              <span id="cardAPrice"></span>
+              <span id="cardARating"></span>
+              <span id="cardAValue"></span>
+            </div>
+          </article>
+
+          <article class="product-card" id="cardB">
+            <span class="card-label">Product B</span>
+            <h3 id="cardBName">No selection</h3>
+            <p id="cardBBrand" class="muted-copy"></p>
+            <div class="card-stats">
+              <span id="cardBPrice"></span>
+              <span id="cardBRating"></span>
+              <span id="cardBValue"></span>
+            </div>
+          </article>
+        </div>
+      </section>
     </section>
   </main>
   <script src="script.js"></script>
